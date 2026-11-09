@@ -1,0 +1,44 @@
+# systemd 示例：放到 /etc/systemd/system/canvasm.service，按自己的路径改。
+# 先建专用用户：useradd --system --no-create-home --shell /sbin/nologin canvasm
+# 代码放 /opt/canvasm（root 所有），数据目录 /opt/canvasm/data（canvasm 所有，700）。
+
+[Unit]
+Description=CanvasM (read-only Canvas MCP gateway)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=canvasm
+Group=canvasm
+WorkingDirectory=/opt/canvasm
+# 可选：ACCESS_CODE / DEFAULT_SCHOOL / PUBLIC_URL / GATEWAY_SECRET / PORT
+EnvironmentFile=-/etc/canvasm.env
+ExecStart=/usr/bin/node /opt/canvasm/server.mjs
+Restart=on-failure
+RestartSec=2
+# 程序只在启动时打一行、崩溃时打错误类型，不含请求信息
+StandardOutput=null
+StandardError=journal
+# 令牌会经过进程内存：不许生成 core dump
+LimitCORE=0
+# 机器开了 swap 的话，别让这个服务的内存被换出到磁盘。
+# cgroup v2 用下面这行；cgroup v1 改用
+#   ExecStartPost=+/bin/sh -c 'echo 0 > /sys/fs/cgroup/memory/system.slice/canvasm.service/memory.swappiness'
+MemorySwapMax=0
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/canvasm/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

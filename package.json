@@ -1,0 +1,14 @@
+{
+  "name": "canvasm",
+  "version": "1.0.0",
+  "description": "Read-only Canvas LMS gateway for Claude (remote MCP). Self-service, no database, no logs.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node test/e2e.mjs",
+    "deploy:cloudflare": "wrangler deploy"
+  }
+}

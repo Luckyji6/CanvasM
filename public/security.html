@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>安全说明 · Canvas 连接</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-inner">
+    <a class="wordmark" href="/">Canvas 连接</a>
+    <a class="back" href="/">返回连接页</a>
+  </div>
+</header>
+
+<main class="doc">
+
+  <h1>我们怎么保护你的数据</h1>
+  <p class="lead">不讲术语，先说结论：<span class="only-stored">你的令牌锁在一个只有你有钥匙的柜子里；</span><span class="only-stateless">你的令牌封在一个信封里交给你自己保管，我们这里什么都不存；</span>你查了什么，我们不记；但数据路过我们这里的那一下，技术上是能被看到的。下面一条一条讲清楚。</p>
+
+  <section class="only-stored" aria-labelledby="s-locker">
+    <h2 id="s-locker">令牌放在哪：像车站的储物柜</h2>
+    <p>柜子在我们这儿，钥匙只有你有，我们没有留备用钥匙。你每次让 Claude 查 Canvas，Claude 带着你的钥匙来，当场开柜、用完就锁上。</p>
+
+    <figure class="locker" aria-label="示意图：连接密钥和服务器上的随机数一起，算出文件名和开锁钥匙，才能解开加密文件">
+      <div class="locker-inputs">
+        <div class="chip-box mine">
+          <span class="chip-title">你的连接密钥</span>
+          <code>cvk_••••••••••••</code>
+          <span class="chip-note">只在你手里，我们不保存</span>
+        </div>
+        <span class="plus" aria-hidden="true">+</span>
+        <div class="chip-box">
+          <span class="chip-title">服务器上的一段随机数</span>
+          <code>•••• •••• ••••</code>
+          <span class="chip-note">单独存放，不和柜子放一起</span>
+        </div>
+      </div>
+      <div class="locker-arrow" aria-hidden="true"><span>两样都有，才算得出</span></div>
+      <div class="locker-file">
+        <span class="chip-title">服务器上保存的加密记录</span>
+        <code class="file-name">3f9a61c07be2…d4.jxc</code>
+        <code class="file-bytes" aria-hidden="true">4a 58 43 31 9c 02 e7 b1 5d 80 3a f4 66 1e c9 27 0b d3 78 a5 e1 4c 92 3f b6 07 da 51 8e 2c f9 60 13 c7 a4 7d 35 ee 09 b2 68 d1 4f 96 20 fb 83 5a</code>
+        <span class="chip-note">名字是一串乱码，内容是密文。少了任何一样都解不开，也看不出是哪所学校、是谁。</span>
+      </div>
+    </figure>
+
+    <p>所以就算有人把整份存储或者备份偷走，拿到的也只是一堆打不开的小记录。我们自己去翻，同样只能数出有几条。</p>
+  </section>
+
+  <section class="only-stateless" aria-labelledby="s-envelope">
+    <h2 id="s-envelope">令牌放在哪：封进信封，交给你自己拿着</h2>
+    <p>这个部署不保存任何东西。你的令牌被封进一个只有服务器拆得开的信封，这个信封就是你的连接密钥。你每次让 Claude 查 Canvas，Claude 带着信封来，服务器当场拆开、用完就忘。</p>
+
+    <figure class="locker" aria-label="示意图：你的令牌和服务器的封口密码一起，封成连接密钥交给你保管，服务器上不留记录">
+      <div class="locker-inputs">
+        <div class="chip-box">
+          <span class="chip-title">你的 Canvas 令牌</span>
+          <code>•••• •••• ••••</code>
+          <span class="chip-note">只在创建连接时提交一次</span>
+        </div>
+        <span class="plus" aria-hidden="true">+</span>
+        <div class="chip-box">
+          <span class="chip-title">服务器的封口密码</span>
+          <code>•••• •••• ••••</code>
+          <span class="chip-note">只有服务器知道</span>
+        </div>
+      </div>
+      <div class="locker-arrow" aria-hidden="true"><span>封好之后交给你</span></div>
+      <div class="chip-box mine">
+        <span class="chip-title">你的连接密钥</span>
+        <code>cvs_••••••••••••</code>
+        <span class="chip-note">信封由你保管，服务器上不留任何记录。没有封口密码，别人拿到信封也拆不开。</span>
+      </div>
+    </figure>
+
+    <p>所以服务器上没有可偷的东西。代价是没法单独作废某一个连接：想作废，就去 Canvas 里把令牌删掉。</p>
+  </section>
+
+  <section aria-labelledby="s-route">
+    <h2 id="s-route">数据怎么走：四站路</h2>
+    <p>你问 Claude“这周有什么作业”，这句话会经过四个地方。每一站能看到什么，标在下面。</p>
+
+    <ol class="route">
+      <li class="stop">
+        <h3>你的 Claude</h3>
+        <p>决定要查什么，带着你的连接密钥发出请求，最后把结果讲给你听。</p>
+        <span class="see see-yes">看得到 Canvas 内容</span>
+      </li>
+      <li class="stop">
+        <h3>中转平台</h3>
+        <p>Cloudflare、Vercel 这类中转或托管平台，负责挡攻击、转发请求。加密传输在这里解开，再送往下一站。</p>
+        <span class="see see-yes">看得到路过的内容</span>
+      </li>
+      <li class="stop stop-us">
+        <h3>本站</h3>
+        <p>用你的钥匙当场解开令牌，去 Canvas 取数据，抹掉邮箱、学号这类字段，再转交回去。</p>
+        <span class="see see-pass">内容只在内存里路过</span>
+        <div class="disk only-stored">
+          <span class="disk-title">本站保存的</span>
+          <span>只有加密记录。不存 Canvas 内容，不写日志。</span>
+        </div>
+        <div class="disk only-stateless">
+          <span class="disk-title">本站保存的</span>
+          <span>什么都没有。没有数据库，没有文件，不写日志。</span>
+        </div>
+      </li>
+      <li class="stop">
+        <h3>学校的 Canvas</h3>
+        <p>数据本来就在这里。它能看到有一台服务器在用你的令牌读数据。</p>
+        <span class="see see-own">数据的原主人</span>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="s-who">
+    <h2 id="s-who">谁能看到什么</h2>
+    <p>把话说全，包括对我们不利的那几格。</p>
+
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr><th scope="col">谁</th><th scope="col">你的令牌</th><th scope="col">Canvas 内容</th><th scope="col">你是哪所学校</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><span class="only-stored">偷走存储或备份的人</span><span class="only-stateless">翻遍服务器存储的人</span></th><td class="no">看不到</td><td class="no">看不到</td><td class="no">看不到</td></tr>
+          <tr><th scope="row">运营者，正常运行时</th><td class="no">看不到</td><td class="no">看不到</td><td class="no">看不到</td></tr>
+          <tr><th scope="row">运营者，如果故意改程序</th><td class="yes">看得到</td><td class="yes">看得到</td><td class="yes">看得到</td></tr>
+          <tr><th scope="row">中转或托管平台</th><td class="once">经手，不保存</td><td class="yes">看得到</td><td class="yes">看得到</td></tr>
+          <tr><th scope="row">Anthropic（你的 Claude）</th><td class="no">看不到</td><td class="yes">看得到</td><td class="yes">看得到</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>中转或托管平台（Cloudflare、Vercel 这类）负责转发请求或运行程序，令牌会从它们手上经过，但它们不保存。</p>
+    <p>第三行是这套办法的极限：内容要转交给 Claude，就必须在我们的服务器内存里出现一下。我们承诺不去看，也把程序写成了不记录，但这一点你没法验证，只能选择信或不信。</p>
+  </section>
+
+  <section aria-labelledby="s-filter">
+    <h2 id="s-filter">哪些东西根本不会交给 Claude</h2>
+    <div class="split">
+      <div class="split-col">
+        <h3>会转交的</h3>
+        <ul>
+          <li>课程、作业和截止时间</li>
+          <li>成绩和老师的评语</li>
+          <li>公告、日程、待办</li>
+          <li>老师的名字</li>
+        </ul>
+      </div>
+      <div class="split-col split-blocked">
+        <h3>挡在外面的</h3>
+        <ul>
+          <li>站内信</li>
+          <li>同学名单</li>
+          <li>邮箱、电话、学号、头像</li>
+          <li>登录和浏览记录</li>
+          <li>家长账号、个人文件</li>
+        </ul>
+      </div>
+    </div>
+    <p>另外，这个连接只能读。它没有办法替你交作业、改东西或删东西。</p>
+  </section>
+
+  <section aria-labelledby="s-you">
+    <h2 id="s-you">你手里的三个开关</h2>
+    <ul class="switches">
+      <li><strong>给令牌设过期时间。</strong>在 Canvas 生成令牌时填上学期结束的日期，到期自动作废。</li>
+      <li><strong>随时在 Canvas 里删掉令牌。</strong>Account → Settings → Approved Integrations，删掉之后这里的连接立刻失效，不需要经过我们。</li>
+      <li class="only-stored"><strong>怀疑密钥泄露就更换。</strong>在<a href="/">连接页</a>的“管理连接”里更换密钥或删除连接，旧的就不能用了。</li>
+      <li class="only-stateless"><strong>怀疑密钥泄露就重来。</strong>先在 Canvas 里删掉令牌，再到<a href="/">连接页</a>用新令牌重新创建连接。</li>
+    </ul>
+  </section>
+
+  <details class="tech only-stored">
+    <summary>给想看细节的人</summary>
+    <p>每个连接保存为一条固定 288 字节的记录：</p>
+    <div class="bytes" role="img" aria-label="记录结构：4 字节标记，12 字节随机数，256 字节密文，16 字节校验">
+      <span class="b b4">标记 4</span><span class="b b12">随机数 12</span><span class="b b256">密文 256</span><span class="b b16">校验 16</span>
+    </div>
+    <ul>
+      <li>连接密钥是 32 字节随机数。服务器不保存它，也不保存它的哈希。</li>
+      <li>记录名和加密密钥都由“连接密钥 + 服务器随机数”通过 HKDF-SHA256 算出。</li>
+      <li>内容用 AES-256-GCM 加密，包含学校地址、令牌和注册日期，统一补齐到 256 字节，所以从长度也看不出区别。</li>
+      <li>不写访问日志和内容日志。</li>
+      <li>学校地址只接受 instructure.com 的域名；令牌只发往你学校的 Canvas，跳转到别的网站时不会带上。</li>
+    </ul>
+  </details>
+
+  <details class="tech only-stateless">
+    <summary>给想看细节的人</summary>
+    <ul>
+      <li>连接密钥 = 12 字节随机数 + AES-256-GCM 密文，密文里是学校地址、令牌和创建日期。</li>
+      <li>加密密钥由服务器密钥通过 HKDF-SHA256 派生。服务器不保存任何连接密钥，也不保存它们的哈希。</li>
+      <li>不写访问日志和内容日志。</li>
+      <li>学校地址只接受 instructure.com 的域名；令牌只发往你学校的 Canvas，跳转到别的网站时不会带上。</li>
+      <li>更换服务器密钥会让所有已发出的连接密钥一起作废。</li>
+    </ul>
+  </details>
+
+</main>
+
+<footer>
+  <p>这是熟人之间分享的小工具，不是学校或 Canvas 官方的服务。完整的<a href="/#risks">风险提示</a>在连接页。</p>
+</footer>
+
+<script src="/security.js" defer></script>
+</body>
+</html>

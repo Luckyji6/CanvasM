@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>Canvas 连接</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-inner">
+    <a class="wordmark" href="#top">Canvas 连接</a>
+    <div class="seg" id="seg" role="tablist" aria-label="页面" data-active="connect">
+      <span class="seg-thumb" aria-hidden="true"></span>
+      <button class="seg-item" role="tab" id="tab-connect" aria-controls="view-connect" aria-selected="true" data-view="connect">新建连接</button>
+      <button class="seg-item" role="tab" id="tab-manage" aria-controls="view-manage" aria-selected="false" data-view="manage" tabindex="-1">管理连接</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="view" id="view-connect" role="tabpanel" aria-labelledby="tab-connect">
+    <h1>让 Claude 读你的 Canvas</h1>
+    <p class="lead">作业、成绩、公告和待办，只读。<span class="only-stored">你的 Canvas 令牌加密后才落盘，解开它的那把密钥只交给你，这里不留底。</span><span class="only-stateless">这里不保存你的任何东西：令牌加密后直接做成连接密钥交给你保管。</span><a href="/security">看看我们怎么保护你的数据</a></p>
+
+    <figure class="seal" aria-label="示意：连接密钥由你保管，服务器上没有能看懂的东西">
+      <div class="seal-side">
+        <span class="seal-label">你保管的</span>
+        <code class="seal-key"><span class="only-stored">cvk_</span><span class="only-stateless">cvs_</span>••••••••••••</code>
+        <span class="seal-note">连接密钥，只显示一次</span>
+      </div>
+      <div class="seal-side seal-disk only-stored">
+        <span class="seal-label">服务器上保存的</span>
+        <code class="seal-bytes" id="noise" aria-hidden="true"></code>
+        <span class="seal-note">没有你的密钥，这份文件解不开，也看不出是哪所学校</span>
+      </div>
+      <div class="seal-side seal-disk only-stateless">
+        <span class="seal-label">服务器上保存的</span>
+        <span class="seal-empty">什么都没有</span>
+        <span class="seal-note">令牌加密后就装在你的连接密钥里，服务器不留任何记录</span>
+      </div>
+    </figure>
+
+    <ol class="steps">
+      <li class="step">
+        <h2>在 Canvas 里生成一个访问令牌</h2>
+        <p>用电脑打开学校的 Canvas 网页，点左侧的 Account，进 Settings，往下找到 Approved Integrations，点 New Access Token。</p>
+        <p>Purpose 随便写（比如 Claude），Expires 建议填到学期结束。生成后把那一长串复制下来，它只显示这一次。</p>
+      </li>
+
+      <li class="step">
+        <h2>填在这里，创建连接</h2>
+        <form id="form-connect" novalidate>
+          <div class="field">
+            <label for="school">学校的 Canvas 地址</label>
+            <input id="school" name="school" type="text" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="yourschool.instructure.com" required>
+            <p class="hint" id="school-hint">就是你登录 Canvas 时浏览器地址栏里的域名。</p>
+          </div>
+          <div class="field">
+            <label for="token">访问令牌</label>
+            <div class="with-action">
+              <input id="token" name="token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+              <button type="button" class="ghost" id="toggle-token" aria-pressed="false">显示</button>
+            </div>
+          </div>
+          <div class="field" id="field-code" hidden>
+            <label for="code">访问码</label>
+            <input id="code" name="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+            <p class="hint">向把这个页面发给你的人要。</p>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="agree" required>
+            <span>我读过下面的<a href="#risks">风险提示</a>，自己决定使用</span>
+          </label>
+          <p class="error" id="connect-error" role="alert" hidden></p>
+          <button type="submit" class="primary" id="connect-submit">创建连接</button>
+        </form>
+      </li>
+
+      <li class="step">
+        <h2>把连接密钥填进 Claude</h2>
+        <p id="result-placeholder">创建成功后，你的连接密钥和填写方法会出现在这里。</p>
+
+        <div id="result" hidden>
+          <p class="ok" id="result-ok"></p>
+          <div class="keycard" id="keycard">
+            <span class="keycard-label">连接密钥</span>
+            <code class="keycard-value" id="key-value"></code>
+            <button type="button" class="primary small" data-copy="key-value">复制密钥</button>
+            <p class="keycard-warn">现在就存好。关掉页面后没有任何办法再看到它，丢了只能重新创建。</p>
+          </div>
+
+          <h3>在 claude.ai 里添加</h3>
+          <p>打开 设置 → Connectors → Add custom connector，按下面填。认证方式选 No sign-in。</p>
+          <dl class="kv">
+            <div><dt>URL</dt><dd><code id="mcp-url"></code><button type="button" class="ghost" data-copy="mcp-url">复制</button></dd></div>
+            <div><dt>Request header 名称</dt><dd><code id="header-name">X-API-Key</code><button type="button" class="ghost" data-copy="header-name">复制</button></dd></div>
+            <div><dt>Request header 值</dt><dd>上面的连接密钥</dd></div>
+          </dl>
+
+          <h3>在 Claude Code 里添加</h3>
+          <div class="cmd"><code id="cc-cmd"></code><button type="button" class="ghost" data-copy="cc-cmd">复制</button></div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="view" id="view-manage" role="tabpanel" aria-labelledby="tab-manage" hidden>
+    <h1>管理连接</h1>
+    <p class="lead">用连接密钥证明这是你的连接。密钥只发送给本站用于这一次操作，不会保存在浏览器里。</p>
+
+    <form id="form-manage" novalidate>
+      <div class="field">
+        <label for="manage-key">连接密钥</label>
+        <input id="manage-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="cvk_… 或 cvs_…" required>
+      </div>
+      <p class="error" id="manage-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="submit" class="primary" id="btn-status">检查状态</button>
+        <button type="button" class="secondary only-stored" id="btn-rotate">更换密钥</button>
+        <button type="button" class="danger only-stored" id="btn-delete">删除连接</button>
+      </div>
+    </form>
+
+    <div class="panel" id="manage-result" hidden></div>
+
+    <ul class="plain">
+      <li><strong>检查状态</strong>：看看连的是哪所学校、令牌还能不能用。</li>
+      <li class="only-stored"><strong>更换密钥</strong>：旧密钥失效，换一把新的。怀疑密钥泄露时用，之后要到 Claude 里改成新密钥。</li>
+      <li class="only-stored"><strong>删除连接</strong>：服务器上的加密记录立刻删除，无法恢复。建议同时到 Canvas 的 Settings 里把那个令牌也删掉。</li>
+      <li class="only-stateless"><strong>想作废这个连接</strong>：这里不保存任何东西，所以没有可删的。到 Canvas 的 Account → Settings → Approved Integrations 里删掉那个令牌，连接就立刻失效。</li>
+    </ul>
+  </section>
+
+  <section class="risks" id="risks" aria-labelledby="risks-title">
+    <h2 id="risks-title">风险提示</h2>
+    <p>用之前请读完。这是熟人之间分享的小工具，不是学校或 Canvas 官方的服务。</p>
+    <ul>
+      <li><strong>运营者技术上能看到经过的数据。</strong>你的 Canvas 内容要转交给 Claude，所以会以明文在服务器内存里经过一下。本站不保存、不记录这些内容，但运营者有能力修改服务器程序，这一点你只能选择信或不信，无法验证。</li>
+      <li><strong>中转平台和 Anthropic 也会经手明文。</strong>流量会经过 Cloudflare、Vercel 这类中转或托管平台；内容最终交给你使用的 Claude，按 Anthropic 的条款处理。</li>
+      <li><strong>Canvas 令牌等于你账号的全部权限。</strong>本站只用它来读，但令牌本身没有只读一说。请给它设过期时间；任何时候在 Canvas 的 Settings 里删掉它，这里的连接就立刻作废。</li>
+      <li><strong>这不符合 Canvas 的接口政策。</strong>Canvas 官方要求第三方应用通过学校授权接入，而不是让用户手动填令牌。学校可能撤销令牌或关闭这个功能，由此产生的后果需要你自己承担。</li>
+      <li><strong>连接密钥丢了无法找回，泄露了要马上处理。</strong>拿到密钥的人可以通过本站读到你的 Canvas 内容。<span class="only-stored">在“管理连接”里更换或删除即可。</span><span class="only-stateless">请立刻到 Canvas 里删掉那个令牌。</span></li>
+      <li><strong>未成年同学请先让家长知道。</strong>成绩和作业是你的教育记录。</li>
+    </ul>
+
+    <h3>本站做了什么来降低风险</h3>
+    <ul>
+      <li>只读：不能提交、修改或删除 Canvas 上的任何东西。</li>
+      <li>站内信、同学名单、邮箱和电话、登录记录、家长账号、个人文件一律不转发；邮箱、学号、头像等字段在返回前抹掉。</li>
+      <li class="only-stored">不用数据库。每个连接只有一份用你的密钥加密的小记录，不保存任何 Canvas 内容。</li>
+      <li class="only-stateless">什么都不保存：没有数据库，没有文件，令牌加密后只存在于你的连接密钥里。</li>
+      <li>不写访问日志和内容日志。</li>
+    </ul>
+    <p class="more"><a href="/security">用图看懂：数据怎么走、谁能看到什么</a></p>
+  </section>
+
+</main>
+
+<footer>
+  <p>私下分享使用，请不要公开传播这个地址。</p>
+</footer>
+
+<script src="/app.js" defer></script>
+</body>
+</html>
